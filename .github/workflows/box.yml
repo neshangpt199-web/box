@@ -16,12 +16,18 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y openssh-server
           sudo mkdir -p /home/runner/.ssh
-          echo "${{ secrets.SSH_PUBKEY }}" | sudo tee /home/runner/.ssh/authorized_keys > /dev/null
+          printf '%s\n' "${{ secrets.SSH_PUBKEY }}" | sudo tee /home/runner/.ssh/authorized_keys > /dev/null
           sudo chown -R runner:runner /home/runner/.ssh
+          sudo chmod 755 /home/runner
           sudo chmod 700 /home/runner/.ssh
           sudo chmod 600 /home/runner/.ssh/authorized_keys
-          sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-          sudo service ssh start
+          printf 'PubkeyAuthentication yes\nPasswordAuthentication no\n' | sudo tee /etc/ssh/sshd_config.d/99-box.conf > /dev/null
+          sudo systemctl restart ssh
+      - name: verify
+        run: |
+          sudo cat /home/runner/.ssh/authorized_keys
+          ssh-keygen -lf /home/runner/.ssh/authorized_keys
+          ls -ld /home/runner /home/runner/.ssh /home/runner/.ssh/authorized_keys
       - name: status
         run: tailscale status
       - name: hold
