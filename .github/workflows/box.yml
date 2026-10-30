@@ -1,0 +1,28 @@
+name: box
+on: [workflow_dispatch]
+concurrency: box
+jobs:
+  box:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+          args: --hostname gh-box
+      - name: sshd
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y openssh-server
+          sudo mkdir -p /home/runner/.ssh
+          echo "${{ secrets.SSH_PUBKEY }}" | sudo tee /home/runner/.ssh/authorized_keys > /dev/null
+          sudo chown -R runner:runner /home/runner/.ssh
+          sudo chmod 700 /home/runner/.ssh
+          sudo chmod 600 /home/runner/.ssh/authorized_keys
+          sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+          sudo service ssh start
+      - name: status
+        run: tailscale status
+      - name: hold
+        run: sleep 20500
